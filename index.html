@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Backview Blaster</title>
+  <link rel="stylesheet" href="style.css?v=20260623-ai-aim-spread-4">
+</head>
+<body class="menu-active">
+  <main class="game">
+    <canvas id="gameCanvas" aria-label="3D shooting game"></canvas>
+
+    <section class="main-menu" id="mainMenu" aria-label="Main menu">
+      <div class="menu-topbar">
+        <div class="menu-nav">
+          <button type="button" aria-label="Menu">
+            <span></span>
+            <span></span>
+            <span></span>
+          </button>
+          <span>ARMORY</span>
+          <span>RANKED</span>
+          <span>PROFILE</span>
+        </div>
+        <h1>JH'S FPS GAME</h1>
+        <div class="menu-version">
+          <small>DATASTREAM ACTIVE</small>
+          <strong>VER. 2.0.4-TACTICAL</strong>
+        </div>
+      </div>
+
+      <div class="menu-frame">
+        <div class="menu-corner top-left"></div>
+        <div class="menu-corner top-right"></div>
+        <div class="menu-corner bottom-left"></div>
+        <div class="menu-corner bottom-right"></div>
+      </div>
+
+      <div class="menu-hero" aria-hidden="true">
+        <div class="rain rain-a"></div>
+        <div class="rain rain-b"></div>
+        <div class="soldier-silhouette">
+          <span class="helmet"></span>
+          <span class="torso"></span>
+          <span class="arm left"></span>
+          <span class="arm right"></span>
+          <span class="leg left"></span>
+          <span class="leg right"></span>
+        </div>
+      </div>
+
+      <div class="menu-center">
+        <p>SYSTEMS STABLE // CONNECTION READY</p>
+        <button class="play-button" id="playButton" type="button">PLAY</button>
+        <div class="menu-actions">
+          <button type="button">TUTORIAL</button>
+          <button type="button">MATCHMAKING</button>
+          <button type="button">OPTIONS</button>
+        </div>
+      </div>
+
+      <div class="map-select" id="mapSelect" aria-label="Map select">
+        <p>SELECT DEPLOYMENT ZONE</p>
+        <div class="map-grid">
+          <button class="map-card" type="button" data-map="0">
+            <span>MAP 01</span>
+            <strong>TACTICAL ARENA</strong>
+            <small>기본 맵</small>
+          </button>
+          <button class="map-card" type="button" data-map="1">
+            <span>MAP 02</span>
+            <strong>SKYLINE DISTRICT</strong>
+            <small>넓은 고층 빌딩 맵</small>
+          </button>
+          <button class="map-card" type="button" data-map="2">
+            <span>MAP 03</span>
+            <strong>NEON DOCKS</strong>
+            <small>빠른 근접전 맵</small>
+          </button>
+          <button class="map-card" type="button" data-map="3">
+            <span>MAP 04</span>
+            <strong>ROOFTOP DUEL</strong>
+            <small>고저차가 큰 결투 맵</small>
+          </button>
+        </div>
+      </div>
+
+      <div class="loadout-select" id="loadoutSelect" aria-label="Weapon loadout select">
+        <p>SELECT 2 WEAPONS</p>
+        <div class="loadout-grid">
+          <button class="loadout-card selected" type="button" data-loadout-weapon="0">
+            <span>1</span>
+            <strong>Auto Rifle</strong>
+            <small>Full-auto</small>
+          </button>
+          <button class="loadout-card selected" type="button" data-loadout-weapon="1">
+            <span>2</span>
+            <strong>Sniper</strong>
+            <small>Long range</small>
+          </button>
+          <button class="loadout-card" type="button" data-loadout-weapon="2">
+            <span>3</span>
+            <strong>Molotov</strong>
+            <small>Area denial</small>
+          </button>
+          <button class="loadout-card" type="button" data-loadout-weapon="3">
+            <span>4</span>
+            <strong>Shotgun</strong>
+            <small>Close burst</small>
+          </button>
+          <button class="loadout-card" type="button" data-loadout-weapon="4">
+            <span>5</span>
+            <strong>Pistol</strong>
+            <small>Fast swap</small>
+          </button>
+          <button class="loadout-card" type="button" data-loadout-weapon="5">
+            <span>6</span>
+            <strong>Launcher</strong>
+            <small>Explosive</small>
+          </button>
+        </div>
+        <button class="loadout-start" id="confirmLoadout" type="button">START MATCH</button>
+      </div>
+
+      <div class="menu-side">
+        <span>SIGNAL STRENGTH</span>
+        <div class="signal-bars">
+          <i></i>
+          <i></i>
+          <i></i>
+          <i></i>
+        </div>
+      </div>
+
+      <div class="menu-footer">
+        <div>
+          <span>SERVER: GLOBAL-ALPHA-NODE-7</span>
+          <strong>LATENCY: 14MS (OPTIMAL)</strong>
+        </div>
+        <div>
+          <span>ENCRYPTION</span>
+          <strong>AES-256-XTS</strong>
+        </div>
+      </div>
+    </section>
+
+    <section class="hud" aria-label="Game status">
+      <button class="settings-button" id="settingsButton" type="button" aria-label="Settings">
+        <span></span>
+      </button>
+
+      <div class="weapon-window" aria-label="Weapons">
+        <button class="weapon-slot active" id="weaponRifle" type="button" data-weapon="0">
+          <span>1</span>
+          <strong>Auto Rifle</strong>
+          <small>Full-auto</small>
+        </button>
+        <button class="weapon-slot" id="weaponSniper" type="button" data-weapon="1">
+          <span>2</span>
+          <strong>Sniper</strong>
+          <small id="sniperStatus">Ready</small>
+        </button>
+        <button class="weapon-slot" id="weaponMolotov" type="button" data-weapon="2">
+          <span>3</span>
+          <strong>Molotov</strong>
+          <small id="molotovStatus">Ready</small>
+        </button>
+        <button class="weapon-slot" id="weaponShotgun" type="button" data-weapon="3">
+          <span>4</span>
+          <strong>Shotgun</strong>
+          <small>Close burst</small>
+        </button>
+        <button class="weapon-slot" id="weaponPistol" type="button" data-weapon="4">
+          <span>5</span>
+          <strong>Pistol</strong>
+          <small>Fast swap</small>
+        </button>
+        <button class="weapon-slot" id="weaponLauncher" type="button" data-weapon="5">
+          <span>6</span>
+          <strong>Launcher</strong>
+          <small>Explosive</small>
+        </button>
+      </div>
+
+      <div class="readouts" aria-label="Weapon status">
+        <div>
+          <span>Weapon</span>
+          <strong id="fireState">Ready</strong>
+        </div>
+        <div>
+          <span>Shots</span>
+          <strong id="shotCount">0</strong>
+        </div>
+        <div>
+          <span>HP</span>
+          <strong id="playerHealth">100</strong>
+        </div>
+        <div>
+          <span>AI</span>
+          <strong id="enemyHealth">100</strong>
+        </div>
+      </div>
+
+      <div class="ammo-readout" aria-label="Ammo status">
+        <span>Ammo</span>
+        <strong id="weaponAmmo">20/20</strong>
+      </div>
+
+      <div class="scoreboard" aria-label="Score">
+        <span>PLAYER</span>
+        <strong><b id="playerScore">0</b> : <b id="enemyScore">0</b></strong>
+        <span>AI</span>
+      </div>
+    </section>
+
+    <section class="round-result" id="roundResult" aria-label="Match result" aria-hidden="true">
+      <div>
+        <strong id="roundResultText">YOU WIN</strong>
+        <button id="restartMatch" type="button">RESTART</button>
+      </div>
+    </section>
+
+    <section class="crosshair" aria-hidden="true">
+      <span></span>
+      <span></span>
+    </section>
+
+    <section class="scope-overlay" id="scopeOverlay" aria-hidden="true">
+      <div class="scope-ring">
+        <span></span>
+        <span></span>
+      </div>
+    </section>
+
+    <section class="controls-note" aria-label="Controls">
+      <kbd>WASD</kbd>
+      <span>Move</span>
+      <kbd>Mouse</kbd>
+      <span>Aim</span>
+      <kbd>Space</kbd>
+      <span>Jump</span>
+      <kbd>Shift</kbd>
+      <span>Run</span>
+      <kbd>Ctrl</kbd>
+      <span>Crouch</span>
+      <kbd>C</kbd>
+      <span>Stance</span>
+      <kbd>LMB</kbd>
+      <span>Fire</span>
+      <kbd>RMB</kbd>
+      <span>Scope</span>
+      <kbd>1/2</kbd>
+      <span>Weapon</span>
+      <kbd>3</kbd>
+      <span>Molotov</span>
+    </section>
+
+    <section class="settings-modal" id="settingsModal" aria-label="Settings dialog" aria-hidden="true">
+      <div class="settings-dialog">
+        <div class="dialog-header">
+          <strong>SETTINGS</strong>
+          <button id="closeSettings" type="button" aria-label="Close settings">×</button>
+        </div>
+        <label class="setting-control" for="sensitivitySlider">
+          <span>Mouse sensitivity</span>
+          <output id="sensitivityValue">0.65</output>
+          <input id="sensitivitySlider" type="range" min="0.2" max="3.0" step="0.05" value="0.65">
+        </label>
+      </div>
+    </section>
+  </main>
+
+  <script type="module" src="script.js?v=20260623-ai-aim-spread-4"></script>
+</body>
+</html>
