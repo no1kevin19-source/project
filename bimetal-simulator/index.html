@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>바이메탈 시뮬레이터</title>
+  <link rel="stylesheet" href="style.css?v=friendly-coefficient-label">
+</head>
+<body>
+  <main class="app">
+    <section class="library" aria-label="물질 보기창">
+      <div class="section-head">
+        <h1>바이메탈 시뮬레이터</h1>
+        <p>물질 2가지를 아래 창으로 끌어다 놓으면 열팽창 차이로 휘어지는 모습을 볼 수 있습니다.</p>
+      </div>
+      <div class="material-grid" id="materialGrid"></div>
+    </section>
+
+    <section class="workspace" aria-label="바이메탈 실험창">
+      <div class="controls">
+        <div>
+          <h2>바이메탈 실험창</h2>
+          <p id="statusText">서로 다른 물질 2개를 놓아주세요.</p>
+        </div>
+        <button class="reset-button" type="button" id="resetButton">초기화</button>
+      </div>
+
+      <div class="drop-zone" id="dropZone" aria-label="물질을 놓는 곳">
+        <div class="empty-state" id="emptyState" aria-hidden="true"></div>
+        <div class="simulation" id="simulation" hidden>
+          <div class="temperature-readout">
+            <span id="bendLabel">휘어짐 없음</span>
+          </div>
+          <div class="bimetal-stage">
+            <svg class="bimetal" id="bimetal" viewBox="0 0 760 260" role="img" aria-label="바이메탈 휘어짐 그림">
+              <g class="fixed-clamp-svg" aria-hidden="true">
+                <rect x="54" y="64" width="24" height="132" rx="5"></rect>
+                <path d="M 58 70 L 76 88 M 58 94 L 76 112 M 58 118 L 76 136 M 58 142 L 76 160 M 58 166 L 76 184"></path>
+              </g>
+              <path class="metal-strip top-strip" id="topStrip" d=""></path>
+              <path class="metal-strip bottom-strip" id="bottomStrip" d=""></path>
+              <text class="strip-label top-label" id="topLabel" x="96" y="104"></text>
+              <text class="strip-label bottom-label" id="bottomLabel" x="96" y="154"></text>
+            </svg>
+            <div class="deflection-meter" aria-live="polite">
+              <span class="deflection-title">처짐량(모식값)</span>
+              <strong id="deflectionValue">0.000 m</strong>
+              <span class="deflection-note">실제 처짐은 두께와 탄성에 따라 달라집니다</span>
+              <div class="length-change-box">
+                <span>길이 변화량(1 m, 실제 선팽창 기준)</span>
+                <strong id="lengthChangeValue">첫번째(물질 없음) 0.000000 m / 두번째(물질 없음) 0.000000 m</strong>
+              </div>
+            </div>
+          </div>
+
+          <div class="particle-panel" aria-label="입자 운동 시뮬레이션">
+            <div class="particle-box">
+              <div class="particle-title" id="firstParticleTitle">첫 번째 물질</div>
+              <canvas id="firstParticleCanvas" width="320" height="140"></canvas>
+            </div>
+            <div class="particle-box">
+              <div class="particle-title" id="secondParticleTitle">두 번째 물질</div>
+              <canvas id="secondParticleCanvas" width="320" height="140"></canvas>
+            </div>
+          </div>
+
+          <div class="selected-list" id="selectedList"></div>
+        </div>
+      </div>
+
+      <div class="temperature-panel">
+        <button class="temp-button" type="button" id="coolButton">냉각</button>
+        <div class="temperature-gauge">
+          <span id="temperatureLabel">20°C</span>
+          <input id="temperatureSlider" type="range" min="-100" max="100" value="20" step="1" aria-label="온도 조절">
+        </div>
+        <button class="temp-button heat" type="button" id="heatButton">가열</button>
+      </div>
+
+      <section class="bimetal-info" aria-label="바이메탈 정보">
+        <div class="info-card">
+          <h3>바이메탈의 특징</h3>
+          <p>실제 바이메탈은 보통 서로 다른 두 금속을 붙여 만들며, 온도가 변할 때 선팽창 정도 차이 때문에 휘어집니다.</p>
+        </div>
+        <div class="info-card">
+          <h3>생활 속 예시</h3>
+          <p>온도 조절 스위치, 화재 경보기, 전기밥솥과 다리미의 자동 온도 조절 장치에 쓰입니다.</p>
+        </div>
+        <div class="info-card">
+          <h3>관전 포인트</h3>
+          <p>열팽창 정도가 서로 많이 다를수록 더 크게 휘고, 실제 처짐은 두께·탄성계수·접합 상태에도 영향을 받습니다.</p>
+        </div>
+        <div class="info-card">
+          <h3>수치 읽는 법</h3>
+          <p>카드의 숫자는 열팽창 정도를 나타내며, 정확한 단위는 괄호 안의 선팽창계수(×10⁻⁶/°C)입니다.</p>
+        </div>
+      </section>
+    </section>
+  </main>
+
+  <div class="modal-backdrop" id="customMaterialModal" hidden>
+    <div class="custom-modal" role="dialog" aria-modal="true" aria-labelledby="customMaterialTitle">
+      <div class="modal-head">
+        <div>
+          <h2 id="customMaterialTitle">사용자 정의 물질</h2>
+          <p>이름, 열팽창 정도(선팽창계수, ×10⁻⁶/°C), RGB 색상을 정해 새 물질을 만드세요.</p>
+        </div>
+        <button class="icon-button" type="button" id="closeCustomModal" aria-label="닫기">×</button>
+      </div>
+
+      <form class="custom-form" id="customMaterialForm" novalidate>
+        <label class="field">
+          <span>물질 이름</span>
+          <input id="customMaterialName" type="text" maxlength="20" required placeholder="예: 신소재A">
+        </label>
+
+        <label class="field">
+          <span>열팽창 정도(선팽창계수, ×10⁻⁶/°C)</span>
+          <input id="customMaterialCoefficient" type="number" min="0" max="100" step="0.1" required placeholder="0~100">
+        </label>
+
+        <div class="rgb-panel" aria-label="RGB 색상 설정">
+          <div class="rgb-row">
+            <label for="rgbR">R</label>
+            <input id="rgbR" class="rgb-slider" type="range" min="0" max="255" value="80">
+            <input id="rgbRNumber" class="rgb-number" type="number" min="0" max="255" value="80">
+          </div>
+          <div class="rgb-row">
+            <label for="rgbG">G</label>
+            <input id="rgbG" class="rgb-slider" type="range" min="0" max="255" value="160">
+            <input id="rgbGNumber" class="rgb-number" type="number" min="0" max="255" value="160">
+          </div>
+          <div class="rgb-row">
+            <label for="rgbB">B</label>
+            <input id="rgbB" class="rgb-slider" type="range" min="0" max="255" value="160">
+            <input id="rgbBNumber" class="rgb-number" type="number" min="0" max="255" value="160">
+          </div>
+        </div>
+
+        <div class="custom-preview">
+          <div class="preview-color" id="customColorPreview"></div>
+          <div class="material-card preview-card" aria-hidden="true">
+            <span class="swatch" id="customCardPreviewSwatch"></span>
+            <span class="material-name" id="customCardPreviewName">신소재A</span>
+            <span class="coefficient" id="customCardPreviewCoefficient">열팽창 정도 45.2 (선팽창계수, ×10⁻⁶/°C)</span>
+          </div>
+        </div>
+
+        <p class="form-message" id="customMaterialMessage" aria-live="polite"></p>
+
+        <div class="modal-actions">
+          <button class="reset-button secondary-button" type="button" id="cancelCustomMaterial">취소</button>
+          <button class="reset-button" type="submit">생성</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="script.js?v=friendly-coefficient-label"></script>
+</body>
+</html>
