@@ -1,0 +1,1151 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>증발 시뮬레이터</title>
+  <link rel="icon" href="data:,">
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #eef5f7;
+      --panel: #ffffff;
+      --ink: #1c2830;
+      --muted: #5e6f7a;
+      --line: #c9d8de;
+      --accent: #207a8c;
+      --accent-dark: #135b6a;
+      --warm: #d36d3f;
+      --shadow: 0 18px 44px rgba(34, 62, 72, 0.13);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Pretendard Variable", "Pretendard", "SUIT", "Noto Sans KR", "Apple SD Gothic Neo", "Segoe UI", sans-serif;
+      -webkit-font-smoothing: antialiased;
+      text-rendering: optimizeLegibility;
+      color: var(--ink);
+      background:
+        linear-gradient(135deg, rgba(32, 122, 140, 0.12), transparent 42%),
+        linear-gradient(315deg, rgba(211, 109, 63, 0.12), transparent 42%),
+        var(--bg);
+    }
+
+    button,
+    input {
+      font: inherit;
+    }
+
+    .app {
+      width: min(1120px, calc(100% - 28px));
+      margin: 0 auto;
+      padding: 22px 0;
+      display: grid;
+      gap: 16px;
+    }
+
+    .panel {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.9);
+      box-shadow: var(--shadow);
+      padding: 18px;
+    }
+
+    .panel-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: end;
+      gap: 14px;
+      margin-bottom: 14px;
+    }
+
+    h1,
+    h2,
+    p {
+      margin: 0;
+    }
+
+    h1 {
+      font-size: clamp(1.55rem, 3vw, 2.35rem);
+      font-weight: 800;
+      letter-spacing: 0;
+    }
+
+    h2 {
+      font-size: 1.22rem;
+      font-weight: 800;
+      letter-spacing: 0;
+    }
+
+    p {
+      color: var(--muted);
+      line-height: 1.5;
+    }
+
+    .material-grid {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(125px, 1fr));
+      gap: 12px;
+    }
+
+    .material-card {
+      min-height: 112px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+      cursor: grab;
+      user-select: none;
+      padding: 13px;
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+      gap: 8px;
+      transition: transform 140ms ease, border-color 140ms ease, box-shadow 140ms ease;
+    }
+
+    .material-card:hover,
+    .material-card:focus-visible {
+      border-color: var(--accent);
+      box-shadow: 0 10px 22px rgba(32, 122, 140, 0.14);
+      transform: translateY(-2px);
+      outline: none;
+    }
+
+    .material-card:active {
+      cursor: grabbing;
+    }
+
+    .material-card.is-selected {
+      border-color: var(--warm);
+      box-shadow: 0 12px 26px rgba(211, 109, 63, 0.18);
+    }
+
+    .color-strip {
+      width: 100%;
+      height: 11px;
+      border-radius: 999px;
+      background: var(--card-color);
+    }
+
+    .material-name {
+      font-size: 1.08rem;
+      font-weight: 800;
+      align-self: center;
+    }
+
+    .speed-label {
+      color: var(--muted);
+      font-size: 0.88rem;
+      font-weight: 700;
+    }
+
+    .evaporation-window {
+      min-height: 430px;
+      display: grid;
+      grid-template-rows: auto 1fr;
+    }
+
+    .stage-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: end;
+    }
+
+    .selected-badge {
+      display: none;
+      min-width: 144px;
+      justify-content: center;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: #f4fafb;
+      padding: 8px 12px;
+      font-weight: 800;
+      color: var(--accent-dark);
+    }
+
+    .stage {
+      position: relative;
+      min-height: 340px;
+      overflow: hidden;
+      border: 2px dashed #97b6c0;
+      border-radius: 8px;
+      background:
+        linear-gradient(rgba(255, 255, 255, 0.78), rgba(255, 255, 255, 0.78)),
+        repeating-linear-gradient(0deg, transparent 0 36px, rgba(32, 122, 140, 0.07) 36px 37px),
+        repeating-linear-gradient(90deg, transparent 0 36px, rgba(32, 122, 140, 0.07) 36px 37px);
+    }
+
+    .stage.is-over {
+      border-color: var(--accent);
+      background-color: rgba(32, 122, 140, 0.09);
+    }
+
+    .stage.has-pending {
+      cursor: crosshair;
+    }
+
+    .stage-label {
+      position: absolute;
+      left: 18px;
+      top: 16px;
+      z-index: 2;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.92);
+      padding: 8px 12px;
+      color: var(--muted);
+      font-weight: 700;
+    }
+
+    canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+
+    .pour-preview {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      z-index: 5;
+      width: 78px;
+      height: 94px;
+      pointer-events: none;
+      transform: translate(-34px, -72px);
+      transform-origin: 36px 76px;
+    }
+
+    .pour-preview[hidden] {
+      display: none;
+    }
+
+    .pour-beaker {
+      position: absolute;
+      left: 8px;
+      top: 0;
+      width: 54px;
+      height: 70px;
+      border: 2px solid rgba(36, 83, 100, 0.55);
+      border-top: 3px solid rgba(36, 83, 100, 0.65);
+      border-radius: 6px 6px 15px 15px;
+      background: linear-gradient(90deg, rgba(255, 255, 255, 0.58), rgba(132, 190, 210, 0.2), rgba(255, 255, 255, 0.42));
+      overflow: hidden;
+      box-shadow: 0 10px 20px rgba(34, 62, 72, 0.18);
+      transform-origin: 40px 62px;
+    }
+
+    .pour-beaker::before {
+      content: "";
+      position: absolute;
+      left: -8px;
+      top: -4px;
+      width: 25px;
+      height: 15px;
+      border-top: 2px solid rgba(36, 83, 100, 0.55);
+      border-left: 2px solid rgba(36, 83, 100, 0.5);
+      border-radius: 50% 0 0 50%;
+      transform: rotate(-18deg);
+    }
+
+    .pour-beaker-liquid {
+      position: absolute;
+      left: 4px;
+      right: 4px;
+      bottom: 4px;
+      height: 48%;
+      border-radius: 6px 6px 12px 12px;
+      background: var(--pour-color);
+      opacity: 0.68;
+      transition: background 160ms ease;
+    }
+
+    .pour-stream {
+      position: absolute;
+      left: 8px;
+      top: 42px;
+      width: 8px;
+      height: 0;
+      border-radius: 999px;
+      background: var(--pour-color);
+      opacity: 0;
+      transform: rotate(52deg);
+      transform-origin: top center;
+    }
+
+    .pour-preview.is-pouring .pour-beaker {
+      animation: tiltPour 1.35s ease-in-out forwards;
+    }
+
+    .pour-preview.is-pouring .pour-beaker-liquid {
+      animation: miniLiquidDrain 1.35s ease-in-out forwards;
+    }
+
+    .pour-preview.is-pouring .pour-stream {
+      animation: pourStream 1.35s ease-in-out forwards;
+    }
+
+    @keyframes tiltPour {
+      0% { transform: rotate(0deg); }
+      24% { transform: rotate(-12deg); }
+      58% { transform: rotate(-58deg); }
+      86% { transform: rotate(-58deg); }
+      100% { transform: rotate(-18deg); }
+    }
+
+    @keyframes miniLiquidDrain {
+      0%, 20% { height: 48%; opacity: 0.68; }
+      78% { height: 12%; opacity: 0.52; }
+      100% { height: 0; opacity: 0; }
+    }
+
+    @keyframes pourStream {
+      0%, 22% { height: 0; opacity: 0; }
+      38% { height: 82px; opacity: 0.68; }
+      82% { height: 98px; opacity: 0.68; }
+      100% { height: 0; opacity: 0; }
+    }
+
+    .conditions-panel {
+      padding-top: 16px;
+    }
+
+    .controls-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 16px;
+    }
+
+    .control-card {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #f8fbfc;
+      padding: 14px;
+      display: grid;
+      gap: 10px;
+    }
+
+    .learning-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 12px;
+      margin-top: 16px;
+    }
+
+    .learning-box {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #ffffff;
+      padding: 14px;
+      display: grid;
+      gap: 8px;
+    }
+
+    .learning-box h3 {
+      margin: 0;
+      font-size: 1rem;
+      font-weight: 800;
+      letter-spacing: 0;
+    }
+
+    .learning-box p {
+      font-size: 0.92rem;
+    }
+
+    .control-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .value-pill {
+      min-width: 80px;
+      text-align: center;
+      border-radius: 999px;
+      background: #ffffff;
+      border: 1px solid var(--line);
+      padding: 7px 10px;
+      font-weight: 800;
+      color: var(--accent-dark);
+    }
+
+    input[type="range"] {
+      width: 100%;
+      accent-color: var(--accent);
+    }
+
+    input[type="range"]:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+
+    .reset-button {
+      border: 0;
+      border-radius: 8px;
+      background: var(--accent);
+      color: #fff;
+      padding: 10px 15px;
+      font-weight: 800;
+      cursor: pointer;
+    }
+
+    .reset-button:hover {
+      background: var(--accent-dark);
+    }
+
+    @media (max-width: 760px) {
+      .panel-head {
+        align-items: start;
+        flex-direction: column;
+      }
+
+      .material-grid,
+      .controls-grid,
+      .learning-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .evaporation-window {
+        min-height: 380px;
+      }
+
+      .stage {
+        min-height: 310px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <section class="panel" aria-labelledby="materialTitle">
+      <div class="panel-head">
+        <div>
+          <h1 id="materialTitle">증발 시뮬레이터</h1>
+          <p>물질 카드를 아래 증발 창으로 끌어다 놓고, 온도와 습도를 바꾸며 입자의 움직임을 관찰해 보세요.</p>
+        </div>
+      </div>
+      <div class="material-grid" id="materialGrid"></div>
+    </section>
+
+    <section class="panel evaporation-window" aria-labelledby="stageTitle">
+      <div class="panel-head">
+        <div>
+          <h2 id="stageTitle">증발 관찰</h2>
+          <p>작은 입자가 액체처럼 모여 있다가, 일부 입자가 위쪽으로 올라가며 증발합니다.</p>
+        </div>
+        <div class="stage-actions">
+          <span class="selected-badge" id="selectedMaterial">선택된 물질: 없음</span>
+          <button class="reset-button" type="button" id="resetButton">초기화</button>
+        </div>
+      </div>
+      <div class="stage" id="stage">
+        <div class="stage-label" id="stageLabel">액체 카드를 클릭하거나 드래그해서 비커에 넣으세요</div>
+        <div class="pour-preview" id="pourPreview" hidden aria-hidden="true">
+          <div class="pour-beaker">
+            <div class="pour-beaker-liquid"></div>
+          </div>
+          <div class="pour-stream"></div>
+        </div>
+        <canvas id="evaporationCanvas" width="1040" height="360" aria-label="증발 입자 애니메이션"></canvas>
+      </div>
+    </section>
+
+    <section class="panel conditions-panel" aria-label="조건 조절">
+      <div class="controls-grid">
+        <label class="control-card">
+          <span class="control-row">
+            <strong>온도</strong>
+            <span class="value-pill" id="temperatureValue">25°C</span>
+          </span>
+          <input id="temperatureSlider" type="range" min="10" max="80" value="25">
+        </label>
+        <label class="control-card">
+          <span class="control-row">
+            <strong>습도</strong>
+            <span class="value-pill" id="humidityValue">40%</span>
+          </span>
+          <input id="humiditySlider" type="range" min="0" max="100" value="40">
+        </label>
+        <label class="control-card">
+          <span class="control-row">
+            <strong>넣는 양</strong>
+            <span class="value-pill" id="amountValue">100%</span>
+          </span>
+          <input id="amountSlider" type="range" min="10" max="100" value="100">
+        </label>
+      </div>
+      <div class="learning-grid" aria-label="증발 학습 설명">
+        <article class="learning-box">
+          <h3>증발이 일어나는 이유</h3>
+          <p>액체 입자들은 계속 움직입니다. 그중 에너지가 큰 입자가 표면을 벗어나면 기체가 됩니다.</p>
+        </article>
+        <article class="learning-box">
+          <h3>실생활 예시</h3>
+          <p>젖은 빨래가 마르거나, 손 소독제가 금방 사라지고, 물웅덩이가 햇빛 아래에서 줄어드는 것이 증발입니다.</p>
+        </article>
+        <article class="learning-box">
+          <h3>온도와 증발 속도</h3>
+          <p>온도가 높아지면 증발 속도가 빨라집니다. 입자들이 더 활발하게 움직여 표면을 벗어나는 입자가 많아지기 때문입니다.</p>
+        </article>
+        <article class="learning-box">
+          <h3>습도와 증발 속도</h3>
+          <p>습도가 높아지면 증발 속도가 느려집니다. 공기 중에 이미 수증기가 많아서 새로 증발한 입자가 퍼져 나가기 어렵기 때문입니다.</p>
+        </article>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const materials = [
+      { id: "acetone", name: "아세톤", speedText: "매우 빠름", speed: 2.7, color: "#8b6ee8" },
+      { id: "alcohol", name: "알코올", speedText: "빠름", speed: 2.0, color: "#2f9fd0" },
+      { id: "water", name: "물", speedText: "보통", speed: 1.25, color: "#3f88e5" },
+      { id: "glycerin", name: "글리세린", speedText: "느림", speed: 0.72, color: "#6aa86f" },
+      { id: "oil", name: "식용유", speedText: "매우 느림", speed: 0.38, color: "#d99b2b" }
+    ];
+
+    const materialGrid = document.querySelector("#materialGrid");
+    const stage = document.querySelector("#stage");
+    const stageLabel = document.querySelector("#stageLabel");
+    const selectedMaterial = document.querySelector("#selectedMaterial");
+    const pourPreview = document.querySelector("#pourPreview");
+    const canvas = document.querySelector("#evaporationCanvas");
+    const ctx = canvas.getContext("2d");
+    const temperatureSlider = document.querySelector("#temperatureSlider");
+    const humiditySlider = document.querySelector("#humiditySlider");
+    const amountSlider = document.querySelector("#amountSlider");
+    const temperatureValue = document.querySelector("#temperatureValue");
+    const humidityValue = document.querySelector("#humidityValue");
+    const amountValue = document.querySelector("#amountValue");
+    const resetButton = document.querySelector("#resetButton");
+
+    let currentMaterial = null;
+    let pendingMaterial = null;
+    let pouringMaterial = null;
+    let isPointerInStage = false;
+    let isPouring = false;
+    let particles = [];
+    let lastTime = 0;
+    let liquidAmount = 0;
+    let pourTimer = null;
+    const particleSpriteCache = new Map();
+
+    const beaker = {
+      rimY: 55,
+      topY: 78,
+      bottomY: 330,
+      left: 360,
+      right: 680,
+      initialLiquidTop: 140,
+      liquidTop: 140,
+      liquidBottom: 330,
+      cornerRadius: 48
+    };
+
+    function renderMaterialCards() {
+      materialGrid.innerHTML = "";
+      materials.forEach((material) => {
+        const card = document.createElement("div");
+        card.className = "material-card";
+        card.draggable = true;
+        card.tabIndex = 0;
+        card.role = "button";
+        card.dataset.id = material.id;
+        card.style.setProperty("--card-color", material.color);
+        card.innerHTML = `
+          <span class="color-strip"></span>
+          <span class="material-name">${material.name}</span>
+          <span class="speed-label">증발 속도: ${material.speedText}</span>
+        `;
+        card.addEventListener("dragstart", (event) => {
+          event.dataTransfer.setData("text/plain", material.id);
+          event.dataTransfer.effectAllowed = "copy";
+        });
+        card.addEventListener("click", () => selectMaterial(material.id));
+        card.addEventListener("keydown", (event) => {
+          if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            selectMaterial(material.id);
+          }
+        });
+        materialGrid.append(card);
+      });
+      updateMaterialCardSelection();
+    }
+
+    function selectMaterial(id) {
+      if (isPouring) return;
+      if (currentMaterial) {
+        stageLabel.textContent = "새 물질을 넣으려면 먼저 초기화하세요";
+        return;
+      }
+      fillBeaker(materials.find((material) => material.id === id) || null);
+    }
+
+    function fillBeaker(material) {
+      currentMaterial = material || null;
+      pendingMaterial = null;
+      pouringMaterial = null;
+      isPouring = false;
+      liquidAmount = currentMaterial ? getSelectedInitialAmount() : 0;
+      updateLiquidLevel();
+      updateLiquidReadout();
+      updateAmountControlState();
+      updateMaterialCardSelection();
+      createLiquidParticles();
+      pourPreview.classList.remove("is-pouring");
+      updatePourPreviewVisibility();
+    }
+
+    function clearSimulation() {
+      if (pourTimer) {
+        window.clearTimeout(pourTimer);
+        pourTimer = null;
+      }
+      currentMaterial = null;
+      pendingMaterial = null;
+      pouringMaterial = null;
+      isPouring = false;
+      liquidAmount = 0;
+      particles = [];
+      pourPreview.classList.remove("is-pouring");
+      updateLiquidLevel();
+      updateLiquidReadout();
+      updateAmountControlState();
+      updateMaterialCardSelection();
+      updatePourPreviewVisibility();
+    }
+
+    function createLiquidParticles() {
+      particles = [];
+      if (!currentMaterial) return;
+
+      const cols = 28;
+      const rowGap = 11;
+      const usableHeight = beaker.liquidBottom - beaker.liquidTop - 18;
+      const rows = Math.max(7, Math.floor(usableHeight / rowGap) + 1);
+      const gapY = usableHeight / (rows - 1);
+
+      for (let row = 0; row < rows; row += 1) {
+        const y = beaker.liquidTop + 10 + row * gapY;
+        const bounds = getBeakerBoundsAtY(y);
+        const radius = 5.6;
+        const startX = bounds.left + 22;
+        const endX = bounds.right - 22;
+        const gapX = (endX - startX) / (cols - 1);
+
+        for (let col = 0; col < cols; col += 1) {
+          const x = startX + col * gapX + (row % 2) * gapX * 0.38;
+          if (x > endX) continue;
+          particles.push({
+            x,
+            y: y + Math.random() * 3,
+            homeX: x,
+            homeY: y,
+            radius: radius + Math.random() * 0.8,
+            phase: Math.random() * Math.PI * 2,
+            vapor: false,
+            alpha: 1,
+            riseSpeed: 0.42 + Math.random() * 0.45,
+            vx: 0,
+            vy: 0,
+            kickX: 0
+          });
+        }
+      }
+    }
+
+    function getConditionFactor() {
+      const temperature = Number(temperatureSlider.value);
+      const humidity = Number(humiditySlider.value);
+      const temperatureFactor = 0.35 + temperature / 42;
+      const humidityFactor = 1.25 - humidity / 115;
+      return Math.max(0.12, temperatureFactor * humidityFactor);
+    }
+
+    function getParticleMotionFactor() {
+      const temperature = Number(temperatureSlider.value);
+      return 0.55 + ((temperature - 10) / 70) * 1.25;
+    }
+
+    function updateValueLabels() {
+      temperatureValue.textContent = `${temperatureSlider.value}°C`;
+      humidityValue.textContent = `${humiditySlider.value}%`;
+      amountValue.textContent = `${amountSlider.value}%`;
+    }
+
+    function getSelectedInitialAmount() {
+      return clamp(Number(amountSlider.value) / 100, 0.1, 1);
+    }
+
+    function applyInitialAmount() {
+      updateValueLabels();
+    }
+
+    function updateAmountControlState() {
+      amountSlider.disabled = Boolean(currentMaterial) || isPouring;
+    }
+
+    function updateLiquidLevel() {
+      beaker.liquidTop = getCurrentLiquidTop();
+    }
+
+    function getCurrentLiquidTop() {
+      if (!currentMaterial || liquidAmount <= 0) return beaker.liquidBottom;
+      const liquidHeight = beaker.liquidBottom - beaker.initialLiquidTop;
+      return beaker.liquidBottom - liquidHeight * liquidAmount;
+    }
+
+    function updateLiquidReadout() {
+      if (!currentMaterial) {
+        if (isPouring && pouringMaterial) {
+          selectedMaterial.textContent = `붓는 중: ${pouringMaterial.name}`;
+          stageLabel.textContent = `${pouringMaterial.name}을 천천히 붓는 중입니다`;
+          return;
+        }
+        if (pendingMaterial) {
+          selectedMaterial.textContent = `선택한 물질: ${pendingMaterial.name}`;
+          stageLabel.textContent = "증발 창 안에서 좌클릭하면 비커를 기울여 액체를 붓습니다";
+          return;
+        }
+        selectedMaterial.textContent = "선택된 물질: 없음";
+        stageLabel.textContent = "액체 카드를 클릭하거나 드래그해서 비커에 넣으세요";
+        return;
+      }
+
+      const percent = Math.max(0, Math.ceil(liquidAmount * 100));
+      selectedMaterial.textContent = `선택된 물질: ${currentMaterial.name} (${percent}%)`;
+      stageLabel.textContent = liquidAmount > 0
+        ? `${currentMaterial.name}의 증발을 관찰 중 · 남은 액체 ${percent}%`
+        : `${currentMaterial.name}이 모두 증발했습니다`;
+    }
+
+    function updateMaterialCardSelection() {
+      document.querySelectorAll(".material-card").forEach((card) => {
+        card.classList.toggle("is-selected", Boolean(pendingMaterial && card.dataset.id === pendingMaterial.id));
+      });
+    }
+
+    function updatePourPreviewVisual() {
+      const material = pouringMaterial || pendingMaterial;
+      if (!material) return;
+      pourPreview.style.setProperty("--pour-color", material.color);
+    }
+
+    function updatePourPreviewPosition(event) {
+      const rect = stage.getBoundingClientRect();
+      const x = clamp(event.clientX - rect.left, 42, rect.width - 32);
+      const y = clamp(event.clientY - rect.top, 82, rect.height - 20);
+      pourPreview.style.left = `${x}px`;
+      pourPreview.style.top = `${y}px`;
+    }
+
+    function updatePourPreviewVisibility() {
+      const shouldShow = (Boolean(pendingMaterial) && isPointerInStage && !currentMaterial) || isPouring;
+      pourPreview.hidden = !shouldShow;
+      stage.classList.toggle("has-pending", Boolean(pendingMaterial && !currentMaterial && !isPouring));
+    }
+
+    function beginPour(event) {
+      if (!pendingMaterial || isPouring || currentMaterial) return;
+      updatePourPreviewPosition(event);
+      pouringMaterial = pendingMaterial;
+      pendingMaterial = null;
+      isPouring = true;
+      liquidAmount = 0;
+      particles = [];
+      updateLiquidLevel();
+      updateLiquidReadout();
+      updateAmountControlState();
+      updateMaterialCardSelection();
+      updatePourPreviewVisual();
+      pourPreview.hidden = false;
+      pourPreview.classList.remove("is-pouring");
+      void pourPreview.offsetWidth;
+      pourPreview.classList.add("is-pouring");
+      pourTimer = window.setTimeout(() => {
+        const material = pouringMaterial;
+        pourTimer = null;
+        fillBeaker(material);
+      }, 1450);
+    }
+
+    function drainLiquid(speed, dt) {
+      if (!currentMaterial || liquidAmount <= 0) return;
+      liquidAmount = clamp(liquidAmount - speed * 0.00018 * dt, 0, 1);
+      updateLiquidLevel();
+      updateLiquidReadout();
+    }
+
+    function isParticleInLiquid(particle) {
+      if (liquidAmount <= 0) return false;
+      const liquidHeight = getLiquidHeight();
+      const radius = getParticleLiquidRadius(particle);
+      if (particle.homeY >= beaker.liquidTop + radius) return true;
+      if (liquidHeight < particle.radius * 2.4) {
+        return particle.homeY >= beaker.liquidBottom - Math.max(16, particle.radius * 2.4);
+      }
+      return false;
+    }
+
+    function getLiquidHeight() {
+      return Math.max(0, beaker.liquidBottom - beaker.liquidTop);
+    }
+
+    function getParticleLiquidRadius(particle) {
+      if (liquidAmount <= 0) return 0;
+      const liquidHeight = getLiquidHeight();
+      return clamp(Math.min(particle.radius, liquidHeight / 2 - 0.4), 0.8, particle.radius);
+    }
+
+    function getParticleDrawRadius(particle) {
+      if (particle.vapor) return particle.vaporRadius || particle.radius;
+      return getParticleLiquidRadius(particle);
+    }
+
+    function drawLiquidShape(topBounds) {
+      const radius = beaker.cornerRadius;
+      const bottomCurveStart = beaker.bottomY - radius;
+
+      ctx.beginPath();
+      ctx.moveTo(topBounds.left, beaker.liquidTop);
+      ctx.lineTo(topBounds.right, beaker.liquidTop);
+
+      if (beaker.liquidTop >= bottomCurveStart) {
+        ctx.quadraticCurveTo(beaker.right, beaker.bottomY, beaker.right - radius, beaker.bottomY);
+        ctx.lineTo(beaker.left + radius, beaker.bottomY);
+        ctx.quadraticCurveTo(beaker.left, beaker.bottomY, topBounds.left, beaker.liquidTop);
+      } else {
+        ctx.lineTo(beaker.right, bottomCurveStart);
+        ctx.quadraticCurveTo(beaker.right, beaker.bottomY, beaker.right - radius, beaker.bottomY);
+        ctx.lineTo(beaker.left + radius, beaker.bottomY);
+        ctx.quadraticCurveTo(beaker.left, beaker.bottomY, beaker.left, bottomCurveStart);
+        ctx.lineTo(topBounds.left, beaker.liquidTop);
+      }
+
+      ctx.closePath();
+    }
+
+    function drawBeaker() {
+      ctx.save();
+      ctx.lineCap = "round";
+      ctx.lineJoin = "round";
+
+      const radius = beaker.cornerRadius;
+      const bodyGradient = ctx.createLinearGradient(beaker.left, 0, beaker.right, 0);
+      bodyGradient.addColorStop(0, "rgba(138, 190, 210, 0.24)");
+      bodyGradient.addColorStop(0.18, "rgba(255, 255, 255, 0.28)");
+      bodyGradient.addColorStop(0.42, "rgba(176, 214, 230, 0.15)");
+      bodyGradient.addColorStop(0.64, "rgba(255, 255, 255, 0.33)");
+      bodyGradient.addColorStop(1, "rgba(121, 176, 198, 0.23)");
+
+      ctx.beginPath();
+      ctx.moveTo(beaker.left, beaker.topY);
+      ctx.lineTo(beaker.left, beaker.bottomY - radius);
+      ctx.quadraticCurveTo(beaker.left, beaker.bottomY, beaker.left + radius, beaker.bottomY);
+      ctx.lineTo(beaker.right - radius, beaker.bottomY);
+      ctx.quadraticCurveTo(beaker.right, beaker.bottomY, beaker.right, beaker.bottomY - radius);
+      ctx.lineTo(beaker.right, beaker.topY);
+      ctx.closePath();
+      ctx.fillStyle = bodyGradient;
+      ctx.fill();
+
+      ctx.lineWidth = 3.4;
+      ctx.strokeStyle = "rgba(36, 83, 100, 0.42)";
+      ctx.stroke();
+
+      ctx.lineWidth = 1.5;
+      ctx.strokeStyle = "rgba(255, 255, 255, 0.72)";
+      ctx.stroke();
+
+      ctx.lineWidth = 2;
+      ctx.strokeStyle = "rgba(255, 255, 255, 0.6)";
+      ctx.beginPath();
+      ctx.moveTo(beaker.left + 78, beaker.topY + 20);
+      ctx.lineTo(beaker.left + 78, beaker.bottomY - 56);
+      ctx.moveTo(beaker.right - 96, beaker.topY + 18);
+      ctx.lineTo(beaker.right - 96, beaker.bottomY - 42);
+      ctx.stroke();
+
+      drawGraduations();
+
+      if (currentMaterial && liquidAmount > 0) {
+        const topBounds = getBeakerBoundsAtY(beaker.liquidTop);
+        ctx.fillStyle = colorWithAlpha(currentMaterial.color, 0.16);
+        drawLiquidShape(topBounds);
+        ctx.fill();
+
+        ctx.strokeStyle = colorWithAlpha(currentMaterial.color, 0.45);
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(topBounds.left, beaker.liquidTop);
+        ctx.lineTo(topBounds.right, beaker.liquidTop);
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+
+    function drawGraduations() {
+      const scaleX = beaker.right - 118;
+      const labelX = scaleX + 42;
+      const startY = beaker.bottomY - 58;
+      const step = 38;
+
+      ctx.save();
+      ctx.lineWidth = 2;
+      ctx.strokeStyle = "rgba(53, 94, 109, 0.45)";
+      ctx.fillStyle = "rgba(53, 94, 109, 0.72)";
+      ctx.font = "700 15px Segoe UI, sans-serif";
+      ctx.textAlign = "left";
+      ctx.textBaseline = "middle";
+
+      ctx.beginPath();
+      ctx.moveTo(scaleX, startY);
+      ctx.lineTo(scaleX, startY - step * 4);
+      ctx.stroke();
+
+      [100, 200, 300, 400, 500].forEach((value, index) => {
+        const y = startY - step * index;
+        ctx.beginPath();
+        ctx.moveTo(scaleX, y);
+        ctx.lineTo(scaleX + 34, y);
+        ctx.stroke();
+        ctx.fillText(String(value), labelX, y);
+      });
+      ctx.restore();
+    }
+
+    function animate(time = 0) {
+      const dt = Math.min(32, time - lastTime || 16) / 16;
+      lastTime = time;
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      drawBeaker();
+
+      if (!currentMaterial) {
+        requestAnimationFrame(animate);
+        return;
+      }
+
+      const speed = currentMaterial.speed * getConditionFactor();
+      const motionFactor = getParticleMotionFactor();
+      drainLiquid(speed, dt);
+      particles.forEach((particle) => {
+        particle.phase += 0.052 * motionFactor * dt;
+
+        if (particle.hidden) return;
+
+        const inLiquid = isParticleInLiquid(particle);
+        const particleRadius = inLiquid ? getParticleLiquidRadius(particle) : particle.radius;
+        const nearSurface = inLiquid && particle.homeY <= beaker.liquidTop + 18;
+        if (!particle.vapor && nearSurface && Math.random() < speed * 0.0065 * dt) {
+          particle.vapor = true;
+          particle.vaporRadius = particleRadius;
+          particle.y = beaker.liquidTop - particle.vaporRadius;
+          particle.x = clamp(particle.x, getBeakerBoundsAtY(particle.y).left + particle.vaporRadius, getBeakerBoundsAtY(particle.y).right - particle.vaporRadius);
+          particle.riseSpeed = 0.78 + Math.random() * 1.05;
+          particle.vx = (Math.random() - 0.5) * (2.6 + speed * 0.55);
+          particle.vy = -particle.riseSpeed * speed;
+        }
+
+        if (particle.vapor) {
+          const vaporRadius = particle.vaporRadius || particle.radius;
+          particle.vy -= 0.012 * speed * dt;
+          particle.y += particle.vy * dt;
+          particle.x += particle.vx * dt;
+          if (particle.y >= beaker.topY) {
+          const bounds = getBeakerBoundsAtY(particle.y);
+          const minX = bounds.left + vaporRadius;
+          const maxX = bounds.right - vaporRadius;
+          if (particle.x < minX || particle.x > maxX) {
+            const hitLeft = particle.x < minX;
+            particle.x = clamp(particle.x, minX, maxX);
+            const direction = hitLeft ? 1 : -1;
+            const rebound = Math.max(Math.abs(particle.vx) * (1.04 + Math.random() * 0.16), 1.55);
+            particle.vx = direction * rebound;
+            particle.y -= (0.45 + Math.random() * 0.65) * speed * dt;
+            particle.phase += 0.8;
+          }
+          } else {
+            particle.vx += Math.sin(particle.phase * 0.7) * 0.035 * dt;
+          }
+          particle.alpha = Math.max(0, particle.alpha - 0.0022 * speed * dt);
+          if (
+            particle.y < vaporRadius ||
+            particle.x < vaporRadius ||
+            particle.x > canvas.width - vaporRadius ||
+            particle.alpha <= 0.08
+          ) {
+            if (liquidAmount <= 0) {
+              particle.hidden = true;
+              return;
+            }
+            particle.vapor = false;
+            particle.alpha = 1;
+            particle.vx = 0;
+            particle.vy = 0;
+            particle.vaporRadius = null;
+            particle.x = particle.homeX + (Math.random() - 0.5) * 10;
+            particle.y = particle.homeY + Math.random() * 8;
+          }
+        } else {
+          if (!inLiquid) return;
+          const liquidBounds = getBeakerBoundsAtY(particle.homeY);
+          const minX = liquidBounds.left + particleRadius;
+          const maxX = liquidBounds.right - particleRadius;
+          const liquidShakeX = 2.4 + motionFactor * 1.9;
+          const liquidShakeY = Math.min(4.6, Math.max(0.45, getLiquidHeight() / 3)) * (0.55 + motionFactor * 0.45);
+          const rawX = particle.homeX + Math.cos(particle.phase) * liquidShakeX + particle.kickX;
+          if (rawX < minX || rawX > maxX) {
+            particle.kickX = (rawX < minX ? 1 : -1) * (2.2 + Math.random() * 1.4);
+            particle.phase += 0.55;
+          }
+          particle.kickX *= 0.9;
+          particle.x = clamp(rawX, minX, maxX);
+          particle.y = clamp(
+            particle.homeY + Math.sin(particle.phase * 1.35) * liquidShakeY,
+            beaker.liquidTop + particleRadius,
+            beaker.liquidBottom - particleRadius
+          );
+        }
+
+        drawParticle(particle, currentMaterial.color);
+      });
+
+      requestAnimationFrame(animate);
+    }
+
+    function drawParticle(particle, color) {
+      const radius = getParticleDrawRadius(particle);
+      if (radius <= 0) return;
+      const sprite = getParticleSprite(color, radius);
+      ctx.save();
+      ctx.globalAlpha = particle.vapor ? particle.alpha * 0.78 : 1;
+      ctx.drawImage(sprite, particle.x - sprite.width / 2, particle.y - sprite.height / 2);
+      ctx.restore();
+    }
+
+    function getParticleSprite(color, radius) {
+      const roundedRadius = Math.max(0.8, Math.round(radius * 2) / 2);
+      const key = `${color}-${roundedRadius}`;
+      const cached = particleSpriteCache.get(key);
+      if (cached) return cached;
+
+      const padding = 3;
+      const size = Math.ceil((roundedRadius + padding) * 2);
+      const sprite = document.createElement("canvas");
+      sprite.width = size;
+      sprite.height = size;
+      const spriteContext = sprite.getContext("2d");
+      const center = size / 2;
+      const gradient = spriteContext.createRadialGradient(
+        center - roundedRadius * 0.35,
+        center - roundedRadius * 0.35,
+        roundedRadius * 0.15,
+        center,
+        center,
+        roundedRadius
+      );
+      gradient.addColorStop(0, "rgba(255, 255, 255, 0.9)");
+      gradient.addColorStop(0.32, colorWithAlpha(color, 0.98));
+      gradient.addColorStop(1, colorWithAlpha(color, 0.82));
+      spriteContext.beginPath();
+      spriteContext.fillStyle = gradient;
+      spriteContext.arc(center, center, roundedRadius, 0, Math.PI * 2);
+      spriteContext.fill();
+      spriteContext.lineWidth = 1;
+      spriteContext.strokeStyle = colorWithAlpha(color, 0.36);
+      spriteContext.stroke();
+
+      particleSpriteCache.set(key, sprite);
+      return sprite;
+    }
+
+    function getBeakerBoundsAtY(y) {
+      const bottomCurveStart = beaker.bottomY - beaker.cornerRadius;
+      if (y > bottomCurveStart) {
+        const dy = y - bottomCurveStart;
+        const inset = beaker.cornerRadius - Math.sqrt(Math.max(0, beaker.cornerRadius ** 2 - dy ** 2));
+        return {
+          left: beaker.left + inset,
+          right: beaker.right - inset
+        };
+      }
+
+      return {
+        left: beaker.left,
+        right: beaker.right
+      };
+    }
+
+    function clamp(value, min, max) {
+      return Math.max(min, Math.min(max, value));
+    }
+
+    function colorWithAlpha(hex, alpha) {
+      const value = hex.replace("#", "");
+      const r = parseInt(value.slice(0, 2), 16);
+      const g = parseInt(value.slice(2, 4), 16);
+      const b = parseInt(value.slice(4, 6), 16);
+      return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+    }
+
+    stage.addEventListener("dragover", (event) => {
+      event.preventDefault();
+      stage.classList.add("is-over");
+    });
+
+    stage.addEventListener("dragleave", () => {
+      stage.classList.remove("is-over");
+    });
+
+    stage.addEventListener("drop", (event) => {
+      event.preventDefault();
+      stage.classList.remove("is-over");
+      selectMaterial(event.dataTransfer.getData("text/plain"));
+    });
+
+    stage.addEventListener("pointerenter", (event) => {
+      isPointerInStage = true;
+      updatePourPreviewPosition(event);
+      updatePourPreviewVisibility();
+    });
+
+    stage.addEventListener("pointermove", (event) => {
+      if (!isPouring) updatePourPreviewPosition(event);
+      updatePourPreviewVisibility();
+    });
+
+    stage.addEventListener("pointerleave", () => {
+      isPointerInStage = false;
+      updatePourPreviewVisibility();
+    });
+
+    stage.addEventListener("click", (event) => {
+      beginPour(event);
+    });
+
+    temperatureSlider.addEventListener("input", updateValueLabels);
+    humiditySlider.addEventListener("input", updateValueLabels);
+    amountSlider.addEventListener("input", applyInitialAmount);
+    resetButton.addEventListener("click", () => {
+      temperatureSlider.value = 25;
+      humiditySlider.value = 40;
+      amountSlider.value = 100;
+      updateValueLabels();
+      clearSimulation();
+    });
+
+    renderMaterialCards();
+    updateValueLabels();
+    updateAmountControlState();
+    requestAnimationFrame(animate);
+  </script>
+</body>
+</html>
